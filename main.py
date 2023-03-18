@@ -1,11 +1,40 @@
 from typing import List
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import json
 from io import BytesIO
 import base64
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
+from select_stars_by_qa import select_stars_by_qa
+from type_definitions import Star, QAArgs
+import sys
+try:
+    from dwave.system import DWaveSampler, EmbeddingComposite
+    import dimod
+except ImportError as e:
+    print(e)
+    sys.exit(1)
+
 
 app = FastAPI()
+
+origins = [
+    "http://localhost",
+    "http://localhost:5173",
+		"https://qac.vercel.app/"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 class Star(BaseModel):
 	# name: str #星座名
 	# description: str #神話
@@ -15,22 +44,14 @@ class Star(BaseModel):
 	blur_radius: float = 15
 	pixel_rate: int = 32768
 
-
-"""
-curl -X POST -H "Content-Type: application/json" -d '{"name": "orion", "description": "hero", "image": [0,1]}' localhost:8000/
-"orion"が返ってくる！
-"""
-
 @app.post("/")
 def post_root(star: Star):
 	with open('stars.json', 'r') as file:
 		star_list = json.load(file)
+	
 	image = Image.open(BytesIO(base64.b64decode(star.image.replace("data:image/png;base64,", ""))))
 	chosen_star_list, connection_list = make_zodiac_sign(image, star.angle, star_list, star.max_mag, star.blur_radius, star.pixel_rate)
 	return chosen_star_list, connection_list
-
-import numpy
-from PIL import Image, ImageDraw, ImageFilter
 
 def make_zodiac_sign(image:Image, placement_angle, star_list, maximum_mag, blur_radius = 30, rate_of_using = 32768):
 	placement_angle#位置指定形式合わせ
@@ -51,7 +72,7 @@ def make_zodiac_sign(image:Image, placement_angle, star_list, maximum_mag, blur_
 		return new_m, new_n
 
 	candidate_list = []
-	array_of_blured = numpy.array(blured_image)
+	array_of_blured = np.array(blured_image)
 	for star in star_list:
 		if maximum_mag < star['mag']:
 			continue
@@ -62,8 +83,13 @@ def make_zodiac_sign(image:Image, placement_angle, star_list, maximum_mag, blur_
 		if None is place_in_image:
 			continue
 		candidate_list.append((star, array_of_blured[place_in_image[0], place_in_image[1], 3]))
-
-	chosen_star_list = choice_star_of_zodiac_dummy(candidate_list, int(round(numpy.count_nonzero(numpy.array(image)[:, :, 3]) / rate_of_using)))#qa 方式に差し替え
+	chosen_star_list = choice_star_of_zodiac_dummy(candidate_list, int(round(np.count_nonzero(np.array(image)[:, :, 3]) / rate_of_using)))#qa 方式に差し替え
+	# chosen_star_list = select_stars_by_qa(
+	# 	candidate_list,
+	# 	n_opaque=510,
+	# 	n_pixel=100,
+	# 	qa_args=QAArgs( lagrange_multiplier=10, token="T6nD-003e8847b163bdf7bb0adf388dc62fb50e697cb0", num_reads=1000,)
+	# ) #qa 方式に差し替え
 
 	def trans_to_image(star):
 		x, y, _ = reverse_by_angle((star['x'], star['y'], star['z']))
@@ -92,7 +118,7 @@ def connect_star_dummy(star_list, array_of_image, trans_function):
 	distance_list = sorted([((coord1[0] - coord2[0]) ** 2 + (coord1[1] - coord2[1]) ** 2, (id1, id2), (coord1, coord2)) for id1, coord1 in data_list for id2, coord2 in data_list if id1 != id2], key=lambda x:x[0])
 	def check_usable(coord1, coord2):
 		target_matrix = array_of_image[coord1[0]:coord2[0], coord1[1]:coord2[1], 3]
-		return len(target_matrix) == numpy.count_nonzero(target_matrix)
+		return len(target_matrix) == np.count_nonzero(target_matrix)
 	group_list = [[id] for id, _ in data_list]
 	def find_group(id):
 		for index in range(len(group_list)):
