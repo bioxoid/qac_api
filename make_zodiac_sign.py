@@ -1,11 +1,11 @@
 import numpy
 from PIL import Image, ImageDraw, ImageFilter
+from type_definitions import Star, QAArgs
+from select_stars_by_qa import select_stars_by_qa
 
-def make_zodiac_sign(image:Image, placement_angle, star_list, maximum_mag, blur_radius = 30, rate_of_using = 10000):
-    placement_angle#位置指定形式合わせ
+def make_zodiac_sign(image:Image, placement_angle, maximum_mag, blur_radius = 30, rate_of_using = 10000):
     def reverse_by_angle(coordinate):
         return coordinate#形式に合わせた変換
-
     blured_image = image.filter(ImageFilter.GaussianBlur(blur_radius))
 
     horizontal_offset = int(round(image.size[0] / 2))#天体と絵のスケール
@@ -21,6 +21,9 @@ def make_zodiac_sign(image:Image, placement_angle, star_list, maximum_mag, blur_
 
     candidate_list = []
     array_of_blured = numpy.array(blured_image)
+    import json
+    with open('stars.json', 'r') as file:
+        star_list = json.load(file)
     for star in star_list:
         if maximum_mag < star['mag']:
             continue
@@ -31,14 +34,24 @@ def make_zodiac_sign(image:Image, placement_angle, star_list, maximum_mag, blur_
         if None is place_in_image:
             continue
         candidate_list.append((star, array_of_blured[place_in_image[0], place_in_image[1], 3]))
-    print(candidate_list)
-    chosen_star_list = choice_star_of_zodiac_dummy(candidate_list, int(round(numpy.count_nonzero(numpy.array(image)[:, :, 3]) / rate_of_using)))#qa 方式に差し替え
-
+    number_of_opaque = int(numpy.count_nonzero(numpy.array(image)[:, :, 3]))
+    # chosen_star_list = choice_star_of_zodiac_dummy(candidate_list, int(round(numpy.count_nonzero(numpy.array(image)[:, :, 3]) / rate_of_using)))#qa 方式に差し替え
+    chosen_star_list = select_stars_by_qa(
+        sorted([star for star, _ in candidate_list], key=lambda x:x["mag"])[:15],
+        n_opaque=number_of_opaque,
+        n_pixel=rate_of_using,
+        qa_args=QAArgs(
+            lagrange_multiplier=10,
+            token="DEV-58f167ae5204fca8b0820e2bf71bf0613374fbef",
+            num_reads=1000,
+        ),
+    )
     def trans_to_image(star):
         x, y, _ = reverse_by_angle((star['x'], star['y'], star['z']))
         return trans_from_surface_to_image(int(round(y)), int(round(x)))
-    connection_list = connect_star_dummy(chosen_star_list, array_of_blured, trans_to_image)#qa 方式に差し替え
-    return chosen_star_list, connection_list
+    connection_list = connect_star_dummy(chosen_star_list, array_of_blured, trans_to_image)
+    print(connection_list)
+    return connection_list
 
 def choice_star_of_zodiac_dummy(candidate_list, number_of_using):
     ranking_list = sorted([(star['mag'] * (2. - alpha / 128.), star) for star, alpha in candidate_list], key=lambda x:x[0])
@@ -55,7 +68,6 @@ def choice_star_of_zodiac_dummy(candidate_list, number_of_using):
                 chosen_list.append(star)
                 break
     return chosen_list
-
 def connect_star_dummy(star_list, array_of_image, trans_function):
     data_list = [(star['id'], trans_function(star)) for star in star_list]
     distance_list = sorted([((coord1[0] - coord2[0]) ** 2 + (coord1[1] - coord2[1]) ** 2, (id1, id2), (coord1, coord2)) for id1, coord1 in data_list for id2, coord2 in data_list if id1 != id2], key=lambda x:x[0])
@@ -81,38 +93,3 @@ def connect_star_dummy(star_list, array_of_image, trans_function):
         if 1 == len(group_list):
             break
     return connection_list
-
-if __name__ == '__main__':
-    import json
-    with open('stars.json', 'r') as file:
-        star_list = json.load(file)
-        
-    image = Image.open('animal_usaghi_netherland_dwarf.png')
-
-    chosen_star_list, connection_list = make_zodiac_sign(image, [0., 0., 0.], star_list, 6., 15)
-
-    star_field = Image.new("RGB", (2000, 2000), 0)
-    star_field.paste(image, (1000 - image.size[0] // 2, 1000 - image.size[1] // 2))
-    drawer = ImageDraw.Draw(star_field)
-
-    def star_area(star):
-        size = 6.5 - max(0., star['mag'] / 2)
-        return tuple([int(value) + 1000 for value in [star['x'] - size, star['y'] - size, star['x'] + size, star['y'] + size]])
-    for star in star_list:
-        if 6. < star['mag']:
-            continue
-        if 0. > star['z']:
-            continue
-        drawer.ellipse(star_area(star), fill=(star['r'], star['g'], star['b']))
-
-    print(connection_list)
-
-    def star_coordinate(id):
-        for star in chosen_star_list:
-            if id != star['id']:
-                continue
-            return int(star['x']) + 1000, int(star['y'] + 1000)
-    for id1, id2 in connection_list:
-        drawer.line((star_coordinate(id1), star_coordinate(id2)), fill=(255, 0, 0), width=1)
-
-    star_field.save('zodiac_sign.png')

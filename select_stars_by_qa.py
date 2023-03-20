@@ -11,7 +11,6 @@ from typing import List
 import numpy as np
 from type_definitions import Star, QAArgs
 
-
 def select_stars_by_qa(
     stars: List[Star],
     n_opaque: int,
@@ -44,7 +43,6 @@ def select_stars_by_qa(
 
     # CQM variables
     x = [dimod.Binary(f"x_{i}") for i in range(number_of_stars)]
-
     # cost function
     distances = np.sqrt(np.sum((L[:, np.newaxis] - L) ** 2, axis=2)) + np.diag(
         [1e-10 for _ in range(number_of_stars)]
@@ -67,8 +65,8 @@ def select_stars_by_qa(
         sum((M[i] ** 2 - n_mag) * x[i] for i in range(number_of_stars)) <= 0,
         label="constraint-2",
     )
-
     # solve
+    print(qa_args)
     if qa_args is not None:
         lagrange_multiplier = qa_args["lagrange_multiplier"]
         token = qa_args["token"]
@@ -78,27 +76,6 @@ def select_stars_by_qa(
     sampler = EmbeddingComposite(dw_sampler)
     sampleset = sampler.sample(bqm, num_reads=num_reads)
     result = sampleset.first.sample
-
     # select stars according to the result
     selected_stars = [stars[i] for i in range(number_of_stars) if result[f"x_{i}"] == 1]
     return selected_stars
-
-
-if __name__ == "__main__":
-    import json
-
-    with open("stars.json", "r", encoding="utf-8") as file:
-        star_list = json.load(file)
-    example_stars = star_list[:10]
-    print(
-        select_stars_by_qa(
-            example_stars,
-            n_opaque=510,
-            n_pixel=100,
-            qa_args=QAArgs(
-                lagrange_multiplier=10,
-                token="T6nD-003e8847b163bdf7bb0adf388dc62fb50e697cb0",
-                num_reads=1000,
-            ),
-        )
-    )
