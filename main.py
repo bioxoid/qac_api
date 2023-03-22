@@ -12,9 +12,10 @@ from make_zodiac_sign import make_zodiac_sign
 app = FastAPI()
 
 origins = [
-	"http://localhost",
-	"http://localhost:5173",
-	"https://qac.vercel.app/"
+	# "http://localhost",
+	# "http://localhost:5173",
+	# "https://qac.vercel.app/"
+	"*"
 ]
 
 app.add_middleware(
