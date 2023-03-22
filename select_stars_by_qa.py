@@ -66,7 +66,6 @@ def select_stars_by_qa(
         label="constraint-2",
     )
     # solve
-    print(qa_args)
     if qa_args is not None:
         lagrange_multiplier = qa_args["lagrange_multiplier"]
         token = qa_args["token"]
