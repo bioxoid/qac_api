@@ -1,6 +1,5 @@
 import numpy
 from PIL import Image, ImageDraw, ImageFilter
-from type_definitions import Star, QAArgs
 from select_stars_by_qa import select_stars_by_qa
 import math
 
@@ -56,13 +55,13 @@ def make_zodiac_sign(image:Image, placement_angle, maximum_mag, blur_radius = 30
 	# chosen_star_list = choice_star_of_zodiac_dummy(candidate_list, int(round(numpy.count_nonzero(numpy.array(image)[:, :, 3]) / rate_of_using)))#qa 方式に差し替え
 	chosen_star_list = select_stars_by_qa(
 		sorted([star for star, _ in candidate_list], key=lambda x:x["mag"])[:15],
+		qa_args={
+			"lagrange_multiplier": 10,
+			"token": "DEV-58f167ae5204fca8b0820e2bf71bf0613374fbef",
+			"num_reads": 1000,
+		},
 		n_opaque=number_of_opaque,
 		n_pixel=rate_of_using,
-		qa_args=QAArgs(
-			lagrange_multiplier=10,
-			token="DEV-58f167ae5204fca8b0820e2bf71bf0613374fbef",
-			num_reads=1000,
-		),
 	)
 
 	def trans_to_image(star):

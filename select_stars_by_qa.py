@@ -9,15 +9,14 @@ except ImportError as e:
 
 from typing import List
 import numpy as np
-from type_definitions import Star, QAArgs
 
 def select_stars_by_qa(
-    stars: List[Star],
+    stars,
+    qa_args,
     n_opaque: int,
     n_pixel: int = 10,
     n_mag: int = 1,
-    qa_args: QAArgs = None,
-) -> List[Star]:
+):
     """Select stars covered by an image using QA.
     Args:
         stars(List[Star]):

@@ -1,6 +1,7 @@
-from pydantic import BaseModel
+from typing import TypedDict
 
-class Star(BaseModel):
+
+class Star(TypedDict):
     """Type definition of stars used in stars.json."""
 
     id: int
@@ -14,7 +15,7 @@ class Star(BaseModel):
     b: int
 
 
-class QAArgs(BaseModel):
+class QAArgs(TypedDict):
     """Type definition of quantum annealing arguments."""
 
     token: str
