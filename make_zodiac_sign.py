@@ -57,7 +57,7 @@ def make_zodiac_sign(image:Image, placement_angle, maximum_mag, blur_radius = 30
 		sorted([star for star, alpha in candidate_list if 200 < alpha], key=lambda x:x["mag"])[:15],
 		qa_args={
 			"lagrange_multiplier": 10,
-			"token": "DEV-58f167ae5204fca8b0820e2bf71bf0613374fbef",
+			"token": "DEV-0e8b235aa69454fa7a8883abcefcdc6650b991b7",
 			"num_reads": 1000,
 		},
 		n_opaque=number_of_opaque,
