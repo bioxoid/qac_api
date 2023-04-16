@@ -54,7 +54,7 @@ def make_zodiac_sign(image:Image, placement_angle, maximum_mag, blur_radius = 30
 	number_of_opaque = int(numpy.count_nonzero(numpy.array(image)[:, :, 3]))
 	# chosen_star_list = choice_star_of_zodiac_dummy(candidate_list, int(round(numpy.count_nonzero(numpy.array(image)[:, :, 3]) / rate_of_using)))#qa 方式に差し替え
 	chosen_star_list = select_stars_by_qa(
-		sorted([star for star, _ in candidate_list], key=lambda x:x["mag"])[:15],
+		sorted([star for star, alpha in candidate_list if 200 < alpha], key=lambda x:x["mag"])[:15],
 		qa_args={
 			"lagrange_multiplier": 10,
 			"token": "DEV-58f167ae5204fca8b0820e2bf71bf0613374fbef",
